@@ -80,7 +80,9 @@ const char *state_names[state_last] = {
 #define THERMOMETER_MEASUREMENT_CONFIG_UUID 0x2902
 
 uint8 primary_service_uuid[] = {0x00, 0x28};
-//uint8 primary_service_uuid[] = {0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x00, 0x00, 0x40, 0x6E};
+//uint8 primary_service_uuid[] = {0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E};
+//uint8 primary_service_uuid[] = {0x6E, 0x40, 0x00, 0x01, 0xB5, 0xA3, 0xF3, 0x93, 0xE0, 0xA9, 0xE5, 0x0E, 0x24, 0xDC, 0xCA, 0x9E};
+
 uint16 thermometer_handle_start = 0,
        thermometer_handle_end = 0,
        thermometer_handle_measurement = 0,
@@ -203,8 +205,10 @@ int read_message(int timeout_ms)
 
 void enable_indications(uint8 connection_handle, uint16 client_configuration_handle)
 {
-    uint8 configuration[] = {0x02, 0x00}; // enable indications
-    ble_cmd_attclient_attribute_write(connection_handle, thermometer_handle_configuration, 2, &configuration);
+//    uint8 configuration[] = {0x02, 0x00}; // enable indications
+    uint8 configuration[] = {0x01, 0x00}; // enable indications
+//    ble_cmd_attclient_attribute_write(connection_handle, thermometer_handle_configuration, 2, &configuration);
+    ble_cmd_attclient_attribute_write(connection_handle, 16, 2, &configuration);
 }
 
 void ble_rsp_system_get_info(const struct ble_msg_system_get_info_rsp_t *msg)
@@ -286,6 +290,7 @@ void ble_evt_connection_status(const struct ble_msg_connection_status_evt_t *msg
         // Find primary services
         else {
             change_state(state_finding_services);
+//            ble_cmd_attclient_read_by_group_type(msg->connection, FIRST_HANDLE, LAST_HANDLE, 16, primary_service_uuid);
             ble_cmd_attclient_read_by_group_type(msg->connection, FIRST_HANDLE, LAST_HANDLE, 2, primary_service_uuid);
         }
     }
@@ -299,11 +304,12 @@ void ble_evt_attclient_group_found(const struct ble_msg_attclient_group_found_ev
     uint16 uuid;
 
     if(msg->uuid.len == 2){
-    	uint16 uuid = (msg->uuid.data[1] << 8) | msg->uuid.data[0];
+    	uuid = (msg->uuid.data[1] << 8) | msg->uuid.data[0];
    		printf(" uuid: %x  \n", uuid);
     }
     else
     {
+           uuid = THERMOMETER_SERVICE_UUID;
     		printf(" uuid:  ");
     	for(uint8 i =0; i < msg->uuid.len; i++)
     	{
@@ -345,9 +351,23 @@ void ble_evt_attclient_procedure_completed(const struct ble_msg_attclient_proced
         }
         // Enable temperature notifications
         else {
+
+            printf(" enabling indications %d %d %d \n", msg->chrhandle, msg->connection, msg->result);
             change_state(state_listening_measurements);
             enable_indications(msg->connection, thermometer_handle_configuration);
+//            ble_cmd_connection_disconnec0t(msg->);
+
         }
+    }
+    else
+    {
+    	static int i = 0;
+     printf("proc-complteted else ... \n");
+     if(i == 0) {
+	 uint8 configuration[] = {0x4c}; // enable indications
+     ble_cmd_attclient_attribute_write(msg->connection, 13, 1, &configuration);
+      i++;
+     }
     }
 }
 
